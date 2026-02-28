@@ -21,6 +21,7 @@
 ACPI_MODULE_NAME("cmos rtc");
 
 static const struct acpi_device_id acpi_cmos_rtc_ids[] = {
+	{ "ACPI000E", 1 }, /* ACPI Time and Alarm Device (TAD) */
 	{ "PNP0B00" },
 	{ "PNP0B01" },
 	{ "PNP0B02" },
@@ -68,7 +69,13 @@ static int acpi_install_cmos_rtc_space_handler(struct acpi_device *adev,
 		return -ENODEV;
 	}
 
-	return 1;
+	/*
+	 * For ACPI TAD (ACPI000E) devices, return 0 so the normal ACPI device
+	 * enumeration flow creates the platform device for the TAD driver.
+	 * For regular CMOS RTC devices (PNP0B0x), return 1 to mark the device
+	 * as fully handled by this scan handler.
+	 */
+	return id->driver_data ? 0 : 1;
 }
 
 static void acpi_remove_cmos_rtc_space_handler(struct acpi_device *adev)
