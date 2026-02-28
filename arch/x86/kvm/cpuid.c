@@ -510,10 +510,17 @@ static int kvm_set_cpuid(struct kvm_vcpu *vcpu, struct kvm_cpuid_entry2 *e2,
 	int r;
 
 	/*
+	 * Apply pending runtime CPUID updates to the current CPUID entries to
+	 * avoid false positives due to mismatches on KVM-owned feature flags.
+	 */
+	if (vcpu->arch.cpuid_dynamic_bits_dirty)
+		kvm_update_cpuid_runtime(vcpu);
+
+	/*
 	 * Swap the existing (old) entries with the incoming (new) entries in
 	 * order to massage the new entries, e.g. to account for dynamic bits
-	 * that KVM controls, without clobbering the current guest CPUID, which
-	 * KVM needs to preserve in order to unwind on failure.
+	 * that KVM controls, without losing the current guest CPUID, which KVM
+	 * needs to preserve in order to unwind on failure.
 	 *
 	 * Similarly, save the vCPU's current cpu_caps so that the capabilities
 	 * can be updated alongside the CPUID entries when performing runtime
@@ -1014,10 +1021,12 @@ void kvm_set_cpu_caps(void)
 		F(FSRS),
 		F(FSRC),
 		F(WRMSRNS),
+		X86_64_F(FRED),
 		X86_64_F(LKGS),
 		F(AMX_FP16),
 		F(AVX_IFMA),
 		F(LAM),
+		F(NMI_SOURCE),
 	);
 
 	kvm_cpu_cap_init(CPUID_7_1_ECX,
